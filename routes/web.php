@@ -7,5 +7,5 @@ Route::get('/', function () {
     return view('welcome');
 });
 Route::middleware(['cors'])->group(function () {
-Route::get('/api/ssd', [StreamStitchController::class, 'sendData']);
+
 });
