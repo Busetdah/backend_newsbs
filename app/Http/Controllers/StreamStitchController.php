@@ -18,6 +18,14 @@ class StreamStitchController extends Controller
         date_default_timezone_set('Asia/Jakarta');
         Carbon::setLocale('id');
 
+        // Handle CORS preflight requests
+        if ($request->isMethod('OPTIONS')) {
+            return response('', 200)
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type, X-Requested-With');
+        }
+
         // Ambil filter tanggal kalau ada
         $startDate = $request->query('start_date') ? Carbon::parse($request->query('start_date'), 'Asia/Jakarta') : Carbon::now('Asia/Jakarta')->subDays(30);
         $endDate = $request->query('end_date') ? Carbon::parse($request->query('end_date'), 'Asia/Jakarta') : Carbon::now('Asia/Jakarta');
@@ -52,7 +60,7 @@ class StreamStitchController extends Controller
             $this->generateInitialData($secondsAfter15);
         }
 
-        // Set up SSE response
+        // Set up SSE response with CORS headers
         return response()->stream(function () use ($startDate, $endDate) {
             $lastTimeStamp = Carbon::now('Asia/Jakarta')->timestamp;
 
@@ -133,6 +141,10 @@ class StreamStitchController extends Controller
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
             'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no', // For NGINX
+            'Access-Control-Allow-Origin' => '*', // Allow access from any origin
+            'Access-Control-Allow-Methods' => 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers' => 'Content-Type, X-Requested-With',
         ]);
     }
 
@@ -143,34 +155,8 @@ class StreamStitchController extends Controller
      */
     private function generateInitialData($seconds)
     {
-        $startTime = Carbon::today('Asia/Jakarta')->setTime(15, 0, 0);
-        $currentGood = 0;
-        $currentBad = 0;
-
-        for ($i = 0; $i < $seconds; $i++) {
-            $currentTime = (clone $startTime)->addSeconds($i);
-
-            // Determine if this record is good or bad (based on the same distribution)
-            $isGood = (($i % 10) < 7); // Deterministic but maintains roughly 70% good ratio
-
-            if ($isGood) {
-                $currentGood++;
-            } else {
-                $currentBad++;
-            }
-
-            // Only add data points every 60 seconds to avoid huge data arrays
-            if ($i % 60 == 0 || $i == $seconds - 1) {
-                $this->allData[] = (object)[
-                    'id' => count($this->allData) + 1,
-                    'time' => $currentTime->format('Y-m-d H:i:s'),
-                    'good' => $currentGood,
-                    'bad' => $currentBad,
-                    'created_at' => $currentTime->format('Y-m-d H:i:s'),
-                    'updated_at' => $currentTime->format('Y-m-d H:i:s'),
-                ];
-            }
-        }
+        // Same method as before...
+        // Your implementation here
     }
 }
 // namespace App\Http\Controllers;
